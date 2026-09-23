@@ -97,6 +97,11 @@ export async function login(_: ActionState, formData: FormData): Promise<ActionS
   if (user.bannedAt) {
     return fail(`This account has been suspended${user.banReason ? `: ${user.banReason}` : "."}`);
   }
+  // Promote accounts added to ADMIN_EMAILS after they'd already signed up and
+  // verified. Unverified accounts get promoted when they click the email link.
+  if (user.emailVerifiedAt && user.role !== "ADMIN" && isAdminEmail(user.email)) {
+    await db.user.update({ where: { id: user.id }, data: { role: "ADMIN" } });
+  }
   await createSession(user.id);
   redirect(user.emailVerifiedAt ? safeNext(formData.get("next")) : "/verify-email");
 }
