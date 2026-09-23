@@ -121,3 +121,7 @@ export const REPORT_REASONS = [
 export const LISTING_TTL_DAYS = 30;
 export const MAX_PHOTOS = 8;
 export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+/** Whole-form upload cap, just under next.config's serverActions.bodySizeLimit (25mb). */
+export const MAX_UPLOAD_BYTES = 24 * 1024 * 1024;
+/** Photos are resized in the browser to fit within this many pixels. */
+export const PHOTO_MAX_DIMENSION = 2000;

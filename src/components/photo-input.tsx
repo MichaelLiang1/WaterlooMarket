@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { MAX_PHOTO_BYTES, MAX_PHOTOS } from "@/lib/constants";
+import { shrinkImage } from "@/lib/shrink-image";
 import { FieldError } from "./forms";
 
 type Existing = { id: string; url: string };
@@ -23,14 +24,28 @@ export function PhotoInput({
   const [previews, setPreviews] = useState<{ url: string; name: string }[]>([]);
   const [removed, setRemoved] = useState<string[]>([]);
   const [warning, setWarning] = useState("");
+  const [processing, setProcessing] = useState(false);
+  const latestRun = useRef(0);
 
   useEffect(() => () => previews.forEach((p) => URL.revokeObjectURL(p.url)), [previews]);
 
   const kept = existing.filter((p) => !removed.includes(p.id));
   const remaining = max - kept.length;
 
-  function onChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = [...(e.target.files ?? [])];
+  async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
+    const run = ++latestRun.current;
+    const picked = [...(input.files ?? [])];
+    setProcessing(picked.length > 0);
+    const files = await Promise.all(picked.map(shrinkImage));
+    // Ignore this result if the user picked again while we were shrinking.
+    if (run !== latestRun.current) return;
+    setProcessing(false);
+    // Swap the shrunk versions into the input so they're what gets submitted.
+    const transfer = new DataTransfer();
+    files.forEach((f) => transfer.items.add(f));
+    input.files = transfer.files;
+
     const tooBig = files.filter((f) => f.size > MAX_PHOTO_BYTES);
     if (files.length > remaining) {
       setWarning(`You can add ${remaining} more photo${remaining === 1 ? "" : "s"}.`);
@@ -89,7 +104,9 @@ export function PhotoInput({
         onChange={onChange}
       />
       <p className="mt-1 text-xs text-stone-500">
-        Up to {max} photos, JPEG/PNG/WebP, 5 MB each.{previews.length > 0 && " Tap + again to replace your selection."}
+        {processing
+          ? "Preparing photos…"
+          : `Up to ${max} photos (JPEG, PNG, or WebP). Large photos are shrunk automatically.${previews.length > 0 ? " Tap + again to replace your selection." : ""}`}
       </p>
       {warning && <p className="mt-1 text-xs text-red-700">{warning}</p>}
       <FieldError name={name} />

@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { MAX_PHOTO_BYTES } from "./constants";
+import { MAX_PHOTO_BYTES, PHOTO_MAX_DIMENSION } from "./constants";
 
 // Local-disk storage. On a host with an ephemeral filesystem, point UPLOAD_DIR
 // at a mounted volume (or swap these three functions for S3/R2 calls).
@@ -52,8 +52,6 @@ export async function saveImage(file: File): Promise<string> {
   return key;
 }
 
-const MAX_DIMENSION = 2000;
-
 /**
  * Re-encodes the image so EXIF/XMP metadata is dropped. Phone photos embed
  * the GPS location they were taken at, which would reveal a seller's home
@@ -64,7 +62,7 @@ async function clean(bytes: Uint8Array, ext: Ext, name: string) {
   try {
     const image = sharp(bytes, { failOn: "error" })
       .rotate()
-      .resize(MAX_DIMENSION, MAX_DIMENSION, { fit: "inside", withoutEnlargement: true });
+      .resize(PHOTO_MAX_DIMENSION, PHOTO_MAX_DIMENSION, { fit: "inside", withoutEnlargement: true });
     const encoded =
       ext === "jpg" ? image.jpeg({ quality: 85, mozjpeg: true })
       : ext === "png" ? image.png()

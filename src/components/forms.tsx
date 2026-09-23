@@ -7,9 +7,11 @@ import {
   useContext,
   useEffect,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import type { ActionState } from "@/lib/action-state";
+import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 
 type Action = (state: ActionState, formData: FormData) => Promise<ActionState>;
 
@@ -43,6 +45,7 @@ export function ActionForm({
   confirm?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const [clientError, setClientError] = useState("");
   const ref = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -61,13 +64,27 @@ export function ActionForm({
           if (confirm && !window.confirm(confirm)) return;
           const submitter = (e.nativeEvent as SubmitEvent).submitter;
           const formData = new FormData(e.currentTarget, submitter);
+          // Over the server's body limit the action never runs and the page
+          // crashes, so catch it here with a message the user can act on.
+          const uploadBytes = [...formData.values()].reduce(
+            (sum, v) => sum + (v instanceof File ? v.size : 0),
+            0,
+          );
+          if (uploadBytes > MAX_UPLOAD_BYTES) {
+            const mb = (n: number) => Math.round(n / (1024 * 1024));
+            setClientError(
+              `Your photos add up to ${mb(uploadBytes)} MB, over the ${mb(MAX_UPLOAD_BYTES)} MB limit. Remove a few photos and try again.`,
+            );
+            return;
+          }
+          setClientError("");
           startTransition(() => formAction(formData));
         }}
       >
         {children}
-        {state?.error && (
+        {(clientError || state?.error) && (
           <p role="alert" className="mt-2 text-sm text-red-700">
-            {state.error}
+            {clientError || state?.error}
           </p>
         )}
         {showSuccess && state?.success && (
