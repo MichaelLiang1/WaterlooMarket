@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Waterloo gold + ink */
+  --color-gold-50: #fffbeb;
+  --color-gold-100: #fff3c4;
+  --color-gold-200: #ffe58a;
+  --color-gold-300: #fed34c;
+  --color-gold-400: #fdc02a;
+  --color-gold-500: #e4a813;
+  --color-gold-600: #b8820b;
+  --color-gold-700: #8a5f0d;
+  --color-ink: #111111;
+}
+
+@layer base {
+  body {
+    @apply bg-stone-50 text-stone-900 antialiased;
+  }
+  /* Don't let iOS zoom in on focus: inputs must be >= 16px on phones. */
+  input,
+  select,
+  textarea {
+    @apply text-base sm:text-sm;
+  }
+}
+
+@utility input {
+  @apply block w-full rounded-lg border border-stone-300 bg-white px-3 py-2 shadow-xs outline-none placeholder:text-stone-400 focus:border-gold-500 focus:ring-2 focus:ring-gold-300 disabled:bg-stone-100 aria-invalid:border-red-500;
+}
+
+@utility label {
+  @apply mb-1 block text-sm font-medium text-stone-700;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+@utility btn-primary {
+  @apply btn bg-ink text-white hover:bg-stone-800;
+}
+
+@utility btn-gold {
+  @apply btn bg-gold-400 text-ink hover:bg-gold-300;
+}
+
+@utility btn-secondary {
+  @apply btn border border-stone-300 bg-white text-stone-800 hover:bg-stone-100;
+}
+
+@utility btn-danger {
+  @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50;
+}
+
+@utility btn-sm {
+  @apply px-3! py-1.5! text-xs!;
+}
+
+@utility card {
+  @apply rounded-xl border border-stone-200 bg-white shadow-xs;
+}
+
+@utility chip {
+  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+}
+
+@utility link {
+  @apply font-medium text-gold-700 underline-offset-2 hover:underline;
+}
