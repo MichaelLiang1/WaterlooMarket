@@ -13,7 +13,7 @@ import { KindBadge, StatusBadge } from "@/components/listing-card";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { ReportForm } from "@/components/report-form";
 import { Stars } from "@/components/stars";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, manualApproval } from "@/lib/auth";
 import {
   CATEGORY_LABELS,
   CONDITION_LABELS,
@@ -251,7 +251,13 @@ export default async function ListingPage(props: PageProps<"/listings/[id]">) {
           </div>
         ) : !user.emailVerifiedAt ? (
           <div className="card p-4 text-sm">
-            <Link href="/verify-email" className="link">Confirm your email</Link> to request or message.
+            {manualApproval() ? (
+              "You can request or message once an admin approves your account."
+            ) : (
+              <>
+                <Link href="/verify-email" className="link">Confirm your email</Link> to request or message.
+              </>
+            )}
           </div>
         ) : (
           <>

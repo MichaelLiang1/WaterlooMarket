@@ -85,6 +85,34 @@ export async function unbanUser(_: ActionState, formData: FormData): Promise<Act
   return ok("User unbanned.");
 }
 
+export async function approveUser(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdmin();
+  const user = await db.user.findUnique({ where: { id: String(formData.get("userId")) } });
+  if (!user) return fail("User not found.");
+  if (user.emailVerifiedAt) return ok(`${user.name} is already approved.`);
+  await db.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
+  await notify({
+    userId: user.id,
+    type: "account_approved",
+    title: "You're approved — welcome to Waterloo Market!",
+    body: "Your account is ready. You can now post listings, send requests, and message other students.",
+    link: "/",
+  });
+  revalidateAdmin();
+  return ok(`${user.name} approved.`);
+}
+
+/** Deletes a pending (never-approved) account. Approved accounts should be banned instead. */
+export async function rejectUser(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdmin();
+  const user = await db.user.findUnique({ where: { id: String(formData.get("userId")) } });
+  if (!user) return fail("User not found.");
+  if (user.emailVerifiedAt) return fail("This account is already approved. Ban it instead.");
+  await db.user.delete({ where: { id: user.id } });
+  revalidateAdmin();
+  return ok(`${user.name}'s sign-up was rejected and deleted.`);
+}
+
 export async function resolveReport(_: ActionState, formData: FormData): Promise<ActionState> {
   const admin = await requireAdmin();
   const status = formData.get("status") === "DISMISSED" ? "DISMISSED" : "RESOLVED";

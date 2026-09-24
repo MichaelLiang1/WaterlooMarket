@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { changePassword, updateProfile } from "@/app/actions/auth";
 import { ActionForm, Field, SubmitButton } from "@/components/forms";
-import { requireUser } from "@/lib/auth";
+import { manualApproval, requireUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Account settings" };
 
@@ -35,7 +35,8 @@ export default async function AccountPage() {
           <div>
             <p className="label">Email</p>
             <p className="text-sm text-stone-700">
-              {user.email} {user.emailVerifiedAt ? "✓ verified" : "(not verified)"}
+              {user.email}{" "}
+              {user.emailVerifiedAt ? "✓ verified" : manualApproval() ? "(waiting for approval)" : "(not verified)"}
             </p>
           </div>
           <label className="flex items-start gap-2 text-sm">

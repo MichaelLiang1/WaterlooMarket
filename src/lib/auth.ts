@@ -33,6 +33,15 @@ export function isAdminEmail(email: string) {
     .includes(normalizeEmail(email));
 }
 
+/**
+ * How new accounts get verified. "email" (default): they click a link sent to
+ * their school address. "manual": an admin approves them in /admin, for when
+ * email delivery isn't set up. Either way, approval sets `emailVerifiedAt`.
+ */
+export function manualApproval() {
+  return process.env.SIGNUP_VERIFICATION?.trim().toLowerCase() === "manual";
+}
+
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
 }

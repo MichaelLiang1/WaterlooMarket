@@ -14,12 +14,14 @@ import {
   hashPassword,
   isAdminEmail,
   isSchoolEmail,
+  manualApproval,
   normalizeEmail,
   requireUser,
   verifyPassword,
 } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { appUrl, sendEmail } from "@/lib/email";
+import { notify } from "@/lib/notify";
 import { LIMITS, clientIp, rateLimit } from "@/lib/rate-limit";
 import { passwordSchema, profileSchema } from "@/lib/validation";
 
@@ -63,6 +65,8 @@ export async function signup(_: ActionState, formData: FormData): Promise<Action
       email: "Already registered. Log in or reset your password.",
     });
   }
+  const admin = isAdminEmail(email);
+  const manual = manualApproval();
   const user = await db.user.create({
     data: {
       email,
@@ -70,12 +74,37 @@ export async function signup(_: ActionState, formData: FormData): Promise<Action
       program,
       year,
       passwordHash: await hashPassword(password),
-      role: isAdminEmail(email) ? "ADMIN" : "USER",
+      role: admin ? "ADMIN" : "USER",
+      // With manual approval, admins are approved up front so there's always
+      // someone who can approve everyone else.
+      emailVerifiedAt: manual && admin ? new Date() : null,
     },
   });
-  await sendVerificationEmail(user.id, user.email, user.name);
+  if (manual) {
+    if (!admin) await notifyAdminsOfSignup(user);
+  } else {
+    await sendVerificationEmail(user.id, user.email, user.name);
+  }
   await createSession(user.id);
-  redirect("/verify-email");
+  redirect(user.emailVerifiedAt ? "/" : "/verify-email");
+}
+
+async function notifyAdminsOfSignup(user: { name: string; email: string }) {
+  const admins = await db.user.findMany({
+    where: { role: "ADMIN", bannedAt: null, emailVerifiedAt: { not: null } },
+    select: { id: true },
+  });
+  await Promise.all(
+    admins.map((a) =>
+      notify({
+        userId: a.id,
+        type: "signup_pending",
+        title: `${user.name} is waiting for approval`,
+        body: `${user.email} signed up. Approve or reject them in the admin panel.`,
+        link: "/admin",
+      }),
+    ),
+  );
 }
 
 export async function login(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -114,6 +143,7 @@ export async function logout() {
 export async function resendVerification(): Promise<ActionState> {
   const user = await requireUser();
   if (user.emailVerifiedAt) redirect("/");
+  if (manualApproval()) return fail("Accounts are approved by an admin right now, so there's no email to resend.");
   if (!(await rateLimit(`verify:${user.id}`, LIMITS.emailSend.limit, LIMITS.emailSend.windowMs))) {
     return fail(TOO_MANY);
   }
@@ -148,8 +178,12 @@ export async function resetPassword(_: ActionState, formData: FormData): Promise
   if (!userId) return fail("This reset link is invalid or has expired. Request a new one.");
   await db.user.update({
     where: { id: userId },
-    // Opening the emailed link also proves they own the address.
-    data: { passwordHash: await hashPassword(parsed.data), emailVerifiedAt: new Date() },
+    data: {
+      passwordHash: await hashPassword(parsed.data),
+      // Opening the emailed link proves they own the address, which counts as
+      // verification in email mode. In manual mode only an admin can approve.
+      ...(manualApproval() ? {} : { emailVerifiedAt: new Date() }),
+    },
   });
   await destroyAllSessions(userId);
   await createSession(userId);

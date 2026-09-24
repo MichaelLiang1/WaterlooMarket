@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { logout } from "@/app/actions/auth";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, manualApproval } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 async function unreadCounts(userId: string) {
@@ -116,10 +116,16 @@ export async function Header() {
         </div>
         {user && !user.emailVerifiedAt && (
           <div className="bg-gold-300 px-4 py-2 text-center text-sm text-ink">
-            Confirm your school email to post and message.{" "}
-            <Link href="/verify-email" className="font-semibold underline">
-              Resend link
-            </Link>
+            {manualApproval() ? (
+              "Your account is waiting for admin approval. You can browse until then."
+            ) : (
+              <>
+                Confirm your school email to post and message.{" "}
+                <Link href="/verify-email" className="font-semibold underline">
+                  Resend link
+                </Link>
+              </>
+            )}
           </div>
         )}
       </header>

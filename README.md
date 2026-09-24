@@ -34,6 +34,12 @@ npm run lint
 passwords, DB-backed sessions (httpOnly cookie, hashed token), logout, password reset (signs out
 other devices), profile with program and year.
 
+Set `SIGNUP_VERIFICATION=manual` to skip confirmation emails: new accounts wait in a
+"Waiting for approval" list in `/admin` until an admin approves or rejects them, and admins get
+a notification for each sign-up. `ADMIN_EMAILS` accounts are approved automatically. Useful until
+you have a sending domain; switch back to `email` (the default) afterwards. The pending list also
+shows unconfirmed accounts in email mode, so you can let someone in by hand.
+
 **Listings** — five kinds: *for sale*, *for rent*, *storage offered* ("I'll store your things for
 $X/term"), *wanted*, and *sublet* (with city and an external link, for work-term cities). Categories,
 condition, price with rental period, optional deposit (tracked, handled in person), general pickup

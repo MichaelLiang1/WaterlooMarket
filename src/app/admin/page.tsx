@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { banUser, removeListing, resolveReport, unbanUser } from "@/app/actions/admin";
+import { approveUser, banUser, rejectUser, removeListing, resolveReport, unbanUser } from "@/app/actions/admin";
 import { ActionForm, SubmitButton } from "@/components/forms";
-import { requireAdmin } from "@/lib/auth";
+import { manualApproval, requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDay, hoursAgo, timeAgo } from "@/lib/format";
 
@@ -14,7 +14,13 @@ export default async function AdminPage(props: PageProps<"/admin">) {
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const userId = typeof sp.user === "string" ? sp.user : "";
 
-  const [reports, users, stats] = await Promise.all([
+  const [pending, reports, users, stats] = await Promise.all([
+    db.user.findMany({
+      where: { emailVerifiedAt: null, bannedAt: null },
+      orderBy: { createdAt: "asc" },
+      take: 100,
+      select: { id: true, name: true, email: true, program: true, year: true, createdAt: true },
+    }),
     db.report.findMany({
       where: { status: "OPEN" },
       orderBy: { createdAt: "asc" },
@@ -59,6 +65,42 @@ export default async function AdminPage(props: PageProps<"/admin">) {
           </div>
         ))}
       </div>
+
+      <section>
+        <h2 className="mb-1 font-semibold">
+          Waiting for approval {pending.length > 0 && <span className="chip bg-gold-200 text-gold-700">{pending.length}</span>}
+        </h2>
+        <p className="mb-2 text-xs text-stone-500">
+          {manualApproval()
+            ? "New accounts can't post, request, or message until you approve them. Only approve people you know are UWaterloo students."
+            : "These people haven't clicked their confirmation email yet. Approving lets them in without it."}
+        </p>
+        {pending.length === 0 ? (
+          <p className="text-sm text-stone-600">Nobody waiting.</p>
+        ) : (
+          <ul className="card divide-y divide-stone-100">
+            {pending.map((u) => (
+              <li key={u.id} className="flex flex-wrap items-center gap-3 p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{u.name}</p>
+                  <p className="text-xs text-stone-500">
+                    {u.email}
+                    {(u.program || u.year) && ` · ${[u.program, u.year && `Year ${u.year}`].filter(Boolean).join(", ")}`} · signed up {timeAgo(u.createdAt)}
+                  </p>
+                </div>
+                <ActionForm action={approveUser}>
+                  <input type="hidden" name="userId" value={u.id} />
+                  <SubmitButton className="btn-gold btn-sm" pendingText="Approving…">Approve</SubmitButton>
+                </ActionForm>
+                <ActionForm action={rejectUser} confirm={`Reject and delete ${u.name}'s sign-up?`}>
+                  <input type="hidden" name="userId" value={u.id} />
+                  <SubmitButton className="btn-danger btn-sm">Reject</SubmitButton>
+                </ActionForm>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section>
         <h2 className="mb-2 font-semibold">Users</h2>
